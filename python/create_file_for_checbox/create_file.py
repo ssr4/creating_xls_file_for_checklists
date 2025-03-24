@@ -27,6 +27,11 @@ def adjust_alignment(excel_cell):
     excel_cell.alignment = Alignment(wrap_text=True)
 
 
+def get_cell(ws, row, column):
+    return ws.cell(row=row,
+                   column=column)
+
+
 def read_and_create_file(file_name, checklist_data):
     wb = load_workbook('new_example.xlsx')
     ws = wb.active
@@ -47,26 +52,28 @@ def read_and_create_file(file_name, checklist_data):
         # проходим по каждому столбцу
         for idx_col in range(min_col, max_col):
             if (idx_col == 1):
-                ws.cell(row=idx + min_row, column=1).value = f'{idx + 1}'
+                get_cell(ws, idx + min_row, idx_col).value = f'{idx + 1}'
             if (idx_col == 2):
-                ws.cell(row=idx + min_row,
-                        column=idx_col).value = checklist_data['regions'][idx]
+                get_cell(ws, idx + min_row,
+                         idx_col).value = checklist_data['regions'][idx]
             if (idx_col == 3):
-                ws.cell(row=idx + min_row,
-                        column=idx_col).value = checklist_data['weather_condition'][idx]
+                get_cell(ws, idx + min_row,
+                         idx_col).value = checklist_data['weather_condition'][idx]
             if (idx_col == 4):
-                ws.cell(row=idx + min_row,
-                        column=idx_col).value = checklist_data['action'][idx]
+                get_cell(ws, idx + min_row,
+                         idx_col).value = checklist_data['action'][idx]
             if (idx_col == 5):
                 pass
             if (idx_col == 6):
-                ws.cell(row=idx + min_row,
-                        column=idx_col).value = checklist_data['status'][idx]
+                get_cell(ws, idx + min_row,
+                         idx_col).value = checklist_data['status'][idx]
             if (idx_col == 7):
-                ws.cell(row=idx + min_row,
-                        column=idx_col).value = checklist_data['full_name'][idx]
-            ws.cell(row=idx + min_row, column=idx_col).font = adjust_font()
-            adjust_alignment(ws.cell(row=idx + min_row, column=idx_col))
+                get_cell(ws, idx + min_row,
+                         idx_col).value = checklist_data['full_name'][idx]
+            get_cell(ws, idx + min_row,
+                     idx_col).font = adjust_font()
+            adjust_alignment(get_cell(ws, idx + min_row,
+                                      idx_col))
     wb.save(f'{file_name}_{today}.xlsx')
 
 
@@ -111,3 +118,5 @@ try:
             read_and_create_file(file_name, recording_service_data)
 except Exception as e:
     print('Exception', e)
+finally:
+    print('Success!', datetime.today().strftime('%Y-%m-%d %H:%M:%S'))
