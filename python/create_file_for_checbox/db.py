@@ -13,6 +13,7 @@ class DB:
                                            password=password,
                                            database=db_name,
                                            )
+        self.connection.autocommit = True
 
     def query(self, sql, args):
         cursor = self.connection.cursor()

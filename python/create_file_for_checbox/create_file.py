@@ -5,6 +5,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font
 import db as database
 #
+FORMAT_DATE = '%Y-%m-%d %H:%M:%S'
 
 
 def connect_to_db():
@@ -32,12 +33,13 @@ def get_cell(ws, row, column):
                    column=column)
 
 
-def read_and_create_file(file_name, checklist_data):
-    wb = load_workbook('new_example.xlsx')
+def read_and_create_file(file_name, checklist_data, operational_order, date_of_operational_order):
+    wb = load_workbook('checklist_example.xlsx')
     ws = wb.active
     # Название дирекции | ФИО | Дата, время формирования
     min_row = 5
-    today = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+    today = datetime.today().strftime(FORMAT_DATE)
+    ws['C4'] = f'{operational_order} от {date_of_operational_order}'
     for row in ws.iter_rows(min_row=min_row, min_col=3, max_col=5, max_row=min_row, values_only=True):
         ws[f'C{min_row}'] = f'{checklist_data['service_name']}'  # service name
         # date of formation
@@ -77,46 +79,81 @@ def read_and_create_file(file_name, checklist_data):
     wb.save(f'{file_name}_{today}.xlsx')
 
 
+def get_file_metadata_from_db(db):
+    metadata = db.query_with_a_dictionary(
+        'select filename, upload_time from files_uploading.select_file_metadata()', '').fetchall()
+    return metadata
+
+
+def get_difference_between_two_dates_in_hours(date1, date2):
+    d1 = date1.strftime(FORMAT_DATE)
+    d2 = date2.strftime(FORMAT_DATE)
+    dt1 = datetime.strptime(d1, FORMAT_DATE)
+    dt2 = datetime.strptime(d2, FORMAT_DATE)
+    subtract = abs(dt2 - dt1)
+    days = subtract.days
+    seconds = subtract.seconds
+    hours = days*24 + seconds / 3600
+    return hours
+
+
 try:
     db = connect_to_db()
+
     # получение всех служб
-    services = db.query_with_a_dictionary(
-        'select * from accounts.get_all_services', '').fetchall()
-    # проходим по всем службам
-    for service in services:
-        sl_code = service['id']
-        # получаем данные по всем мероприятиям для одной службы в формате dictionary
-        data_for_a_single_service = query_result = db.query_with_a_dictionary(
-            'select * from tablo_content.actual_storm_actions_for_excel where sl_code=%s',
-            (sl_code,)).fetchall()
-        if (len(data_for_a_single_service)):
-            # наименование файла
-            file_name = f'{data_for_a_single_service[0]['sl_name']}_Чеклист'
-            # словарь для хранения данных по службам
-            recording_service_data = dict()
-            recording_service_data['service_name'] = data_for_a_single_service[0]['sl_full_name']
-            recording_service_data['regions'] = list()
-            recording_service_data['weather_condition'] = list()
-            recording_service_data['action'] = list()
-            recording_service_data['status'] = list()
-            recording_service_data['full_name'] = list()
-            for full_service_data in data_for_a_single_service:
-                # print('here', full_service_data,
-                #       full_service_data['sl_full_name'], '\n')
-                recording_service_data['regions'].append(
-                    full_service_data['region'])
-                recording_service_data['action'].append(
-                    full_service_data['action'])
-                recording_service_data['full_name'].append(
-                    full_service_data['check_person'])
-                if full_service_data['status']:
-                    recording_service_data['status'].append('Выполнено')
-                else:
-                    recording_service_data['status'].append('Не выполнено')
-                recording_service_data['weather_condition'].append(
-                    f'{full_service_data['par_name']}, от {full_service_data['action_date_begin']} до {full_service_data['action_date_end']}')
-            read_and_create_file(file_name, recording_service_data)
+
+    metadata = get_file_metadata_from_db(db)
+    # if there are data do actions
+    if (len(metadata)):
+        filename = metadata[0]['filename']
+        upload_time = metadata[0]['upload_time']
+        # get difference between today and upload_time
+        hours = get_difference_between_two_dates_in_hours(
+            datetime.today(), upload_time)
+        minimum_available_hours = 3
+        if (hours >= minimum_available_hours):
+
+            services = db.query_with_a_dictionary(
+                'select * from accounts.get_all_services', '').fetchall()
+            # проходим по всем службам
+            for service in services:
+                sl_code = service['id']
+                # получаем данные по всем мероприятиям для одной службы в формате dictionary
+                data_for_a_single_service = query_result = db.query_with_a_dictionary(
+                    'select * from tablo_content.actual_storm_actions_for_excel where sl_code=%s',
+                    (sl_code,)).fetchall()
+                if (len(data_for_a_single_service)):
+                    # наименование файла
+                    file_name = f'{data_for_a_single_service[0]['sl_name']}_Чеклист'
+                    # словарь для хранения данных по службам
+                    recording_service_data = dict()
+                    recording_service_data['service_name'] = data_for_a_single_service[0]['sl_full_name']
+                    recording_service_data['regions'] = list()
+                    recording_service_data['weather_condition'] = list()
+                    recording_service_data['action'] = list()
+                    recording_service_data['status'] = list()
+                    recording_service_data['full_name'] = list()
+                    for full_service_data in data_for_a_single_service:
+                        recording_service_data['regions'].append(
+                            full_service_data['region'])
+                        recording_service_data['action'].append(
+                            full_service_data['action'])
+                        recording_service_data['full_name'].append(
+                            full_service_data['check_person'])
+                        if full_service_data['status']:
+                            recording_service_data['status'].append(
+                                'Выполнено')
+                        else:
+                            recording_service_data['status'].append(
+                                'Не выполнено')
+                        recording_service_data['weather_condition'].append(
+                            f'{full_service_data['par_name']}, от {full_service_data['action_date_begin']} до {full_service_data['action_date_end']}')
+                     # change the value of 'UPLOADED' to 'SENT' to forbid furhter receipt
+                    db.query(
+                        f"select files_uploading.update_file_metadata('{filename}')", f'')
+                    read_and_create_file(
+                        file_name, recording_service_data, filename, upload_time.strftime(FORMAT_DATE))
 except Exception as e:
     print('Exception', e)
 finally:
-    print('Success!', datetime.today().strftime('%Y-%m-%d %H:%M:%S'))
+    print('Success!', datetime.today().strftime(FORMAT_DATE))
