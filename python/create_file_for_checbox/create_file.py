@@ -4,7 +4,7 @@ from datetime import datetime
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font
 import db as database
-#
+import curl_reuqest as curl
 FORMAT_DATE = '%Y-%m-%d %H:%M:%S'
 
 
@@ -44,7 +44,7 @@ def read_and_create_file(file_name, checklist_data, operational_order, date_of_o
         ws[f'C{min_row}'] = f'{checklist_data['service_name']}'  # service name
         # date of formation
         ws[f'E{min_row}'] = f'{today}'
-    wb.save(f'{file_name}_{today}.xlsx')
+    wb.save(f'./actions/{file_name}_{today}.xlsx')
     min_row = 7
     max_row = min_row + len(checklist_data['regions']) - 1
     min_col = 1
@@ -76,7 +76,7 @@ def read_and_create_file(file_name, checklist_data, operational_order, date_of_o
                      idx_col).font = adjust_font()
             adjust_alignment(get_cell(ws, idx + min_row,
                                       idx_col))
-    wb.save(f'{file_name}_{today}.xlsx')
+    wb.save(f'./actions/{file_name}_{today}.xlsx')
 
 
 def get_file_metadata_from_db(db):
@@ -155,5 +155,6 @@ try:
                         file_name, recording_service_data, filename, upload_time.strftime(FORMAT_DATE))
 except Exception as e:
     print('Exception', e)
-finally:
+else:
     print('Success!', datetime.today().strftime(FORMAT_DATE))
+    curl.sent_message_to_express_chat()
