@@ -12,7 +12,7 @@ def sent_message_to_express_chat():
     try:
         for file in os.listdir(dirname):
             if file.endswith(ext):
-                print(file)
+                # print(file)
                 with open(f'{dirname}/{file}', "rb") as image_file:
                     encoded_string = base64.b64encode(image_file.read())
                     data_obj = {
