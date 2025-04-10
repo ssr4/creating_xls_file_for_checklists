@@ -112,6 +112,8 @@ try:
                     recording_service_data['service_name'] = data_for_a_single_service[0]['sl_full_name']
                     # Ответственный исполнитель
                     recording_service_data['boss'] = data_for_a_single_service[0]['fullname']
+                    # Должность Ответственного исполнителя
+                    # recording_service_data['post'] = data_for_a_single_service[0]['post']
                     recording_service_data['regions'] = list()
                     recording_service_data['weather_condition'] = list()
                     recording_service_data['action'] = list()
